@@ -1,5 +1,8 @@
 # n8n AI & Business Intelligence Briefing
 
+[![n8n](https://img.shields.io/badge/n8n-Workflow_Automation-EA4B71?logo=n8n&logoColor=white)](https://n8n.io/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-black)](https://ollama.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A self-hosted n8n workflow that monitors authoritative AI and Business Intelligence sources, asks a local Ollama model to prepare a professional HTML executive briefing, and sends it through SMTP.

@@ -1,6 +1,20 @@
 # n8n AI & Business Intelligence Briefing
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A self-hosted n8n workflow that monitors authoritative AI and Business Intelligence sources, asks a local Ollama model to prepare a professional HTML executive briefing, and sends it through SMTP.
+
+The project runs entirely on your infrastructure: n8n handles orchestration, Ollama generates the summary locally, and SMTP delivers the finished briefing.
+
+## Features
+
+- Daily scheduled collection of AI, analytics, and Business Intelligence news
+- Parameterized list of 12 authoritative sources
+- Configurable recipient list
+- Local summary generation through Ollama
+- Professional, email-compatible HTML presentation
+- Docker volumes for persistent n8n and Ollama data
+- Sanitized workflow export with no credentials or personal email addresses
 
 ## Architecture
 
@@ -14,6 +28,18 @@ A self-hosted n8n workflow that monitors authoritative AI and Business Intellige
 - Docker Desktop with Docker Compose
 - An SMTP account
 - Enough memory for the selected Ollama model
+
+## Project structure
+
+```text
+.
+|-- docker-compose.yml
+|-- .env.example
+|-- workflows/
+|   `-- n8n-ai-business-intelligence-briefing.json
+|-- LICENSE
+`-- README.md
+```
 
 ## Start the stack
 
@@ -62,3 +88,7 @@ docker compose down
 - Pin image versions instead of `latest` before production deployment.
 - Configure HTTPS and set `N8N_SECURE_COOKIE=true` when exposing n8n beyond localhost.
 - Review generated summaries against the linked source articles before making decisions.
+
+## License
+
+Distributed under the [MIT License](LICENSE). Copyright (c) 2026 Rui Ribeiro.

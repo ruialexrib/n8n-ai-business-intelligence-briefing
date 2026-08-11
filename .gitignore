@@ -1,0 +1,6 @@
+.env
+.DS_Store
+Thumbs.db
+*.log
+n8n_data/
+ollama_data/

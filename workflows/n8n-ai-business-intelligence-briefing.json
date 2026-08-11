@@ -1,0 +1,97 @@
+{
+  "name": "n8n-ai-business-intelligence-briefing",
+  "active": false,
+  "settings": {"executionOrder": "v1", "timezone": "Europe/Lisbon"},
+  "nodes": [
+    {
+      "name": "Daily at 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [0, 0],
+      "parameters": {"rule": {"interval": [{"triggerAtHour": 8}]}}
+    },
+    {
+      "name": "Configure Sources and Recipients",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "notes": "Edit the sources, recipients, and llm values in this node.",
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const sources = [\n  { name: \"OpenAI News\", category: \"AI\", site: \"openai.com/news\" },\n  { name: \"Google AI Blog\", category: \"AI\", site: \"blog.google/technology/ai\" },\n  { name: \"Microsoft AI Blog\", category: \"AI\", site: \"blogs.microsoft.com/ai\" },\n  { name: \"NVIDIA AI Blog\", category: \"AI\", site: \"blogs.nvidia.com\" },\n  { name: \"Hugging Face Blog\", category: \"AI\", site: \"huggingface.co/blog\" },\n  { name: \"AWS Machine Learning Blog\", category: \"AI\", site: \"aws.amazon.com/blogs/machine-learning\" },\n  { name: \"MIT News AI\", category: \"AI\", site: \"news.mit.edu\" },\n  { name: \"Microsoft Power BI Blog\", category: \"BI\", site: \"powerbi.microsoft.com/blog\" },\n  { name: \"Tableau Blog\", category: \"BI\", site: \"tableau.com/blog\" },\n  { name: \"Qlik Blog\", category: \"BI\", site: \"qlik.com/blog\" },\n  { name: \"ThoughtSpot Data Trends\", category: \"BI\", site: \"thoughtspot.com/data-trends\" },\n  { name: \"dbt Labs Blog\", category: \"BI\", site: \"getdbt.com/blog\" }\n];\nconst recipients = [\"primary.recipient@example.com\", \"secondary.recipient@example.com\"];\nconst llm = { baseUrl: \"http://ollama:11434\", model: \"llama3.2:3b\" };\nconst validSources = sources.filter(s => s.name && s.category && /^[a-z0-9.-]+(?:\\/[a-z0-9._~!$&'()*+,;=:@%/-]*)?$/i.test(s.site || \"\"));\nconst validRecipients = [...new Set(recipients.map(String).map(e => e.trim()).filter(e => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e)))];\nif (validSources.length < 10) throw new Error(\"Configure at least 10 valid sources.\");\nif (!validRecipients.length) throw new Error(\"Configure at least one valid email recipient.\");\nconst query = \"(\" + validSources.map(s => \"site:\" + s.site).join(\" OR \") + \") (AI OR analytics OR \\\"business intelligence\\\")\";\nconst feedUrl = \"https://news.google.com/rss/search?q=\" + encodeURIComponent(query) + \"&hl=en-US&gl=US&ceid=US%3Aen\";\nreturn [{json:{sources:validSources,sourceNames:validSources.map(s => s.name),feedUrl,recipients:validRecipients,llm}}];"
+      }
+    },
+    {
+      "name": "Read RSS Sources",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [480, 0],
+      "parameters": {"url": "={{ $json.feedUrl }}", "options": {"customFields": "contentSnippet,isoDate"}}
+    },
+    {
+      "name": "Prepare News",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const cutoff=Date.now()-72*60*60*1000; const config=$(\"Configure Sources and Recipients\").first().json; const seen=new Set();\nconst news=$input.all().map(i=>i.json).filter(a=>{const d=Date.parse(a.isoDate||a.pubDate||\"\");return !Number.isFinite(d)||d>=cutoff;}).filter(a=>{const k=String(a.link||a.guid||a.title||\"\").trim();if(!k||seen.has(k))return false;seen.add(k);return true;}).sort((a,b)=>Date.parse(b.isoDate||b.pubDate||0)-Date.parse(a.isoDate||a.pubDate||0)).slice(0,12).map((a,i)=>({id:i+1,title:String(a.title||\"\").trim(),description:String(a.contentSnippet||a.content||a.description||\"\").replace(/<[^>]*>/g,\" \").replace(/\\s+/g,\" \").trim(),link:a.link||a.guid||\"\",publishedAt:a.isoDate||a.pubDate||\"\"}));\nconst sourceText=news.length?news.map(a=>\"[N\"+a.id+\"] \"+a.title+\"\\nDate: \"+a.publishedAt+\"\\nDescription: \"+a.description+\"\\nLink: \"+a.link).join(\"\\n\\n\"):\"No recent articles were found.\";\nconst prompt=\"Prepare a professional executive briefing in European Portuguese, based exclusively on the supplied articles. The audience consists of technology, data and business decision-makers. Organize it into Artificial Intelligence and Business Intelligence & Analytics. Start with a short executive summary. Select the most relevant developments, including a factual summary, business impact and clickable source link. End with three trends to watch. Do not invent information. Respond only with a valid HTML fragment using h2, h3, p, ul, li, strong, em, a and hr.\\n\\nARTICLES:\\n\"+sourceText;\nreturn [{json:{articleCount:news.length,recipients:config.recipients,sourceNames:config.sourceNames,articles:news,prompt}}];"
+      }
+    },
+    {
+      "name": "Generate Summary with Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [960, 0],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Configure Sources and Recipients').first().json.llm.baseUrl.replace(/\\/$/, '') + '/api/chat' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: $('Configure Sources and Recipients').first().json.llm.model, stream: false, messages: [{ role: \"system\", content: \"You are an executive editor specializing in AI, data, and business intelligence. Produce rigorous HTML based only on the supplied sources.\" }, { role: \"user\", content: $json.prompt }] } }}",
+        "options": {"timeout": 300000}
+      }
+    },
+    {
+      "name": "Format HTML Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const prepared=$(\"Prepare News\").first().json; const esc=v=>String(v||\"\").replace(/&/g,\"&amp;\").replace(/</g,\"&lt;\").replace(/>/g,\"&gt;\").replace(/\\\"/g,\"&quot;\").replace(/'/g,\"&#039;\");\nlet content=String($json?.message?.content||\"\").trim().replace(/<\\/?(?:html|head|body)[^>]*>/gi,\"\").replace(/<script[\\s\\S]*?<\\/script>/gi,\"\").replace(/<style[\\s\\S]*?<\\/style>/gi,\"\"); if(!content)content=\"<p>The briefing could not be generated.</p>\";\nconst date=$now.setZone(\"Europe/Lisbon\").toFormat(\"dd/MM/yyyy\"); const sources=(prepared.sourceNames||[]).map(esc).join(\" · \");\nconst html=\"<div style=\\\"margin:0;background:#f3f5f7;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#172033\\\"><div style=\\\"max-width:760px;margin:0 auto;background:#fff;border:1px solid #dfe3e8;border-radius:12px;overflow:hidden\\\"><div style=\\\"background:#132238;padding:28px 32px;color:#fff\\\"><div style=\\\"font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:#8fd3ff\\\">Executive Intelligence Briefing</div><h1>AI &amp; Business Intelligence</h1><p>\"+date+\" · \"+(prepared.articleCount||0)+\" articles analyzed</p></div><div style=\\\"padding:30px 32px;font-size:15px;line-height:1.65\\\">\"+content+\"</div><div style=\\\"padding:18px 32px;background:#f7f9fb;border-top:1px solid #e6e9ed;color:#5b6573;font-size:12px\\\"><strong>Monitored sources:</strong> \"+sources+\"<br>Automatically generated summary. Review original sources before making decisions.</div></div></div>\";\nreturn [{json:{html,recipients:prepared.recipients||[],subjectDate:date}}];"
+      }
+    },
+    {
+      "name": "Send Email Digest",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1440, 0],
+      "parameters": {
+        "resource": "email",
+        "operation": "send",
+        "fromEmail": "Demo Sender <sender@example.com>",
+        "toEmail": "={{ $json.recipients[0] }}",
+        "subject": "=Executive Briefing — AI & BI — {{ $json.subjectDate }}",
+        "emailFormat": "html",
+        "html": "={{ $json.html }}",
+        "options": {"appendAttribution": false, "bccEmail": "={{ $json.recipients.slice(1).join(',') }}"}
+      }
+    }
+  ],
+  "connections": {
+    "Daily at 08:00": {"main": [[{"node": "Configure Sources and Recipients", "type": "main", "index": 0}]]},
+    "Configure Sources and Recipients": {"main": [[{"node": "Read RSS Sources", "type": "main", "index": 0}]]},
+    "Read RSS Sources": {"main": [[{"node": "Prepare News", "type": "main", "index": 0}]]},
+    "Prepare News": {"main": [[{"node": "Generate Summary with Ollama", "type": "main", "index": 0}]]},
+    "Generate Summary with Ollama": {"main": [[{"node": "Format HTML Email", "type": "main", "index": 0}]]},
+    "Format HTML Email": {"main": [[{"node": "Send Email Digest", "type": "main", "index": 0}]]}
+  },
+  "tags": []
+}

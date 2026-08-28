@@ -31,7 +31,7 @@ The complete workflow runs on your own infrastructure: **n8n** handles orchestra
 - Local summary generation through Ollama
 - Professional email-compatible HTML briefing
 - Persistent n8n and Ollama Docker volumes
-- Sanitised workflow export without credentials or personal addresses
+- Sanitised workflow export without credentials or personal email addresses
 
 ---
 

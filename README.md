@@ -1,80 +1,133 @@
+<div align="center">
+
 # n8n AI & Business Intelligence Briefing
 
-[![n8n](https://img.shields.io/badge/n8n-Workflow_Automation-EA4B71?logo=n8n&logoColor=white)](https://n8n.io/)
+### Self-hosted automated briefing for AI, Analytics, and Business Intelligence news
+
+[![n8n](https://img.shields.io/badge/n8n-Workflow%20Automation-EA4B71?logo=n8n&logoColor=white)](https://n8n.io/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-black)](https://ollama.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Ollama](https://img.shields.io/badge/Ollama-Local%20LLM-black)](https://ollama.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A self-hosted n8n workflow that monitors authoritative AI and Business Intelligence sources, asks a local Ollama model to prepare a professional HTML executive briefing, and sends it through SMTP.
+**Automated monitoring · Local LLM · Executive briefing · SMTP delivery**
 
-The project runs entirely on your infrastructure: n8n handles orchestration, Ollama generates the summary locally, and SMTP delivers the finished briefing.
+</div>
 
-## Features
+---
 
-- Daily scheduled collection of AI, analytics, and Business Intelligence news
-- Parameterized list of 12 authoritative sources
+## About
+
+This project provides a self-hosted **n8n workflow** that monitors authoritative Artificial Intelligence, Analytics, and Business Intelligence sources, asks a local Ollama model to prepare a professional HTML executive briefing, and delivers it by email through SMTP.
+
+The complete workflow runs on your own infrastructure: **n8n** handles orchestration, **Ollama** generates the summary locally, and **SMTP** delivers the finished briefing.
+
+---
+
+## Highlights
+
+- Daily scheduled collection of AI, Analytics, and BI news
+- Parameterised list of 12 authoritative sources
 - Configurable recipient list
 - Local summary generation through Ollama
-- Professional, email-compatible HTML presentation
-- Docker volumes for persistent n8n and Ollama data
-- Sanitized workflow export with no credentials or personal email addresses
+- Professional email-compatible HTML briefing
+- Persistent n8n and Ollama Docker volumes
+- Sanitised workflow export without credentials or personal addresses
+
+---
 
 ## Architecture
 
-- **n8n** schedules and orchestrates the briefing.
-- **Ollama** runs the local LLM.
-- Named Docker volumes preserve n8n configuration and downloaded models.
-- The workflow calls Ollama at `http://ollama:11434` on the private Compose network.
+```text
+Authoritative Sources
+        │
+        ▼
+       n8n
+  Schedule + Collect
+        │
+        ▼
+      Ollama
+    Local LLM
+        │
+        ▼
+ HTML Executive Briefing
+        │
+        ▼
+       SMTP
+        │
+        ▼
+     Recipients
+```
 
-## Requirements
+---
 
-- Docker Desktop with Docker Compose
-- An SMTP account
-- Enough memory for the selected Ollama model
+## Technology Stack
 
-## Project structure
+| Technology | Purpose |
+| --- | --- |
+| **n8n** | Scheduling and workflow orchestration |
+| **Ollama** | Local LLM execution |
+| **Docker Compose** | Self-hosted runtime and persistence |
+| **SMTP** | Email delivery |
+| **HTML** | Executive briefing presentation |
+
+---
+
+## Project Structure
 
 ```text
 .
-|-- docker-compose.yml
-|-- .env.example
-|-- workflows/
-|   `-- n8n-ai-business-intelligence-briefing.json
-|-- LICENSE
-`-- README.md
+├── docker-compose.yml
+├── .env.example
+├── workflows/
+│   └── n8n-ai-business-intelligence-briefing.json
+├── LICENSE
+└── README.md
 ```
 
-## Start the stack
+---
+
+## Getting Started
+
+### Requirements
+
+- Docker Desktop with Docker Compose
+- SMTP account
+- Enough memory for the selected Ollama model
+
+### Start the Stack
 
 ```powershell
 Copy-Item .env.example .env
-# Replace N8N_ENCRYPTION_KEY in .env with a long random value.
+# Replace N8N_ENCRYPTION_KEY with a long random value.
 docker compose up -d
 docker compose exec ollama ollama pull llama3.2:3b
 ```
 
-Open <http://localhost:5678>, create the initial n8n owner account, and import `workflows/n8n-ai-business-intelligence-briefing.json`.
+Open n8n at `http://localhost:5678`, create the initial owner account, and import `workflows/n8n-ai-business-intelligence-briefing.json`.
 
-## Configure n8n
+---
 
-1. Open **Configure Sources and Recipients** and replace the example recipient addresses. The source list and Ollama model are parameterized in this node.
-2. Open **Send Email Digest**, create/select an SMTP credential, and replace the example sender address.
-3. Execute the workflow manually and inspect the generated email.
-4. Publish/activate the workflow only after the test succeeds.
+## Configuration
+
+1. Open **Configure Sources and Recipients** and replace the example recipient addresses.
+2. Review the source list and selected Ollama model.
+3. Open **Send Email Digest**, configure the SMTP credential, and replace the example sender address.
+4. Execute the workflow manually and inspect the generated email.
+5. Publish or activate the workflow after the test succeeds.
 
 Credentials are intentionally absent from the exported workflow. n8n stores them encrypted in its persistent volume using `N8N_ENCRYPTION_KEY`.
 
-## Change the model
-
-Pull the desired model and change `llm.model` in **Configure Sources and Recipients**:
+### Change the Model
 
 ```powershell
 docker compose exec ollama ollama pull <model-name>
 ```
 
-The `OLLAMA_MODEL` value in `.env` documents the intended model; n8n does not automatically read host environment variables inside Code nodes, so keep both values aligned.
+Then update `llm.model` in **Configure Sources and Recipients**. Keep it aligned with the intended `OLLAMA_MODEL` value documented in `.env`.
 
-## Useful commands
+---
+
+## Useful Commands
 
 ```powershell
 docker compose ps
@@ -83,15 +136,19 @@ docker compose stop
 docker compose down
 ```
 
-`docker compose down` keeps named volumes. Adding `--volumes` deletes n8n configuration, credentials, execution history, and downloaded Ollama models.
+`docker compose down` preserves named volumes. Adding `--volumes` deletes n8n configuration, credentials, execution history, and downloaded Ollama models.
 
-## Security notes
+---
+
+## Security
 
 - Never commit `.env`, SMTP credentials, real recipient addresses, or exported credentials.
-- Pin image versions instead of `latest` before production deployment.
-- Configure HTTPS and set `N8N_SECURE_COOKIE=true` when exposing n8n beyond localhost.
-- Review generated summaries against the linked source articles before making decisions.
+- Pin container image versions before production deployment.
+- Configure HTTPS and `N8N_SECURE_COOKIE=true` before exposing n8n beyond localhost.
+- Review generated summaries against the linked source articles before using them for decisions.
+
+---
 
 ## License
 
-Distributed under the [MIT License](LICENSE). Copyright (c) 2026 Rui Ribeiro.
+Distributed under the [MIT License](LICENSE). Copyright © 2026 Rui Ribeiro.

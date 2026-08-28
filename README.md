@@ -58,6 +58,9 @@ Authoritative Sources
      Recipients
 ```
 
+- Named Docker volumes preserve n8n configuration and downloaded Ollama models.
+- The workflow calls Ollama at `http://ollama:11434` on the private Compose network.
+
 ---
 
 ## Technology Stack
